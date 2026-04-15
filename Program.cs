@@ -13,7 +13,7 @@ var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
-
+Console.WriteLine($"DB ConnectionString: {connectionString}");
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
