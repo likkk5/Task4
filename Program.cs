@@ -43,6 +43,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -67,4 +68,4 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate(); 
 }
-app.Run(("http://0.0.0.0:8080"));
+app.Run("http://0.0.0.0:8080");

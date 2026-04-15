@@ -59,7 +59,6 @@ namespace UserManagement.Controllers
                     return View(model);
                 }
 
-                // Update last login time
                 user.LastLoginTime = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
@@ -126,9 +125,17 @@ namespace UserManagement.Controllers
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                _ = Task.Run(() => _emailService.SendVerificationEmailAsync(user.Email, user.Name, user.EmailVerificationToken));
+                try
+                {
+                    await _emailService.SendVerificationEmailAsync(user.Email, user.Name, user.EmailVerificationToken);
+                    TempData["SuccessMessage"] = "Registration successful! Please check your email to verify your account.";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send verification email");
+                    TempData["WarningMessage"] = "Registration successful, but we could not send a verification email. Please contact support.";
+                }
 
-                TempData["SuccessMessage"] = "Registration successful! Please check your email to verify your account.";
                 return RedirectToAction("Login");
             }
 

@@ -149,27 +149,21 @@
     <script>
         function getTimeAgo(date) {
             const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-
             let interval = seconds / 31536000;
             if (interval > 1) return Math.floor(interval) + " years ago";
-
             interval = seconds / 2592000;
             if (interval > 1) return Math.floor(interval) + " months ago";
-
             interval = seconds / 86400;
             if (interval > 1) return Math.floor(interval) + " days ago";
-
             interval = seconds / 3600;
             if (interval > 1) return Math.floor(interval) + " hours ago";
-
             interval = seconds / 60;
             if (interval > 1) return Math.floor(interval) + " minutes ago";
-
             return Math.floor(seconds) + " seconds ago";
         }
 
-        setInterval(function() {
-            $('td span[title]').each(function() {
+        setInterval(function () {
+            $('td span[title]').each(function () {
                 var dateStr = $(this).attr('title');
                 if (dateStr) {
                     var date = new Date(dateStr);
@@ -178,22 +172,29 @@
             });
         }, 60000);
 
-        $(document).ready(function() {
+        $(document).ready(function () {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.map(function(tooltipTriggerEl) {
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
 
-            $('#selectAllCheckbox').change(function() {
-                var isChecked = $(this).prop('checked');
-                $('.user-checkbox').prop('checked', isChecked);
-                updateToolbarButtons();
-            });
+            let pendingAction = null;
+            let pendingIds = null;
 
-            $(document).on('change', '.user-checkbox', function() {
-                updateToolbarButtons();
-                var allChecked = $('.user-checkbox:checked').length === $('.user-checkbox').length;
-                $('#selectAllCheckbox').prop('checked', allChecked);
+            function showConfirm(message, action, ids) {
+                $('#confirmModalBody').text(message);
+                pendingAction = action;
+                pendingIds = ids;
+                $('#confirmModal').modal('show');
+            }
+
+            $('#confirmModalOk').click(function () {
+                if (pendingAction) {
+                    performAction(pendingAction, pendingIds, '');
+                    pendingAction = null;
+                    pendingIds = null;
+                    $('#confirmModal').modal('hide');
+                }
             });
 
             function updateToolbarButtons() {
@@ -205,47 +206,41 @@
             function showMessage(message, type) {
                 var alertClass = type === 'success' ? 'alert-success' : (type === 'error' ? 'alert-danger' : 'alert-info');
                 var icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
-
                 var messageHtml = `
-                    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-                        <i class="fas ${icon} me-2"></i>${message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                `;
+                        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                            <i class="fas ${icon} me-2"></i>${message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
                 $('#statusMessage').html(messageHtml);
-
-                setTimeout(function() {
-                    $('.alert').fadeOut('slow', function() {
-                        $(this).remove();
-                    });
+                setTimeout(function () {
+                    $('.alert').fadeOut('slow', function () { $(this).remove(); });
                 }, 3000);
             }
 
             function performAction(action, userIds, successMessage) {
+                let data = null;
+                if (action !== 'DeleteUnverifiedUsers') {
+                    data = JSON.stringify(userIds);
+                }
                 $.ajax({
                     url: '/User/' + action,
                     type: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify(userIds),
-                    headers: {
-                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
-                    },
-                    success: function(response) {
+                    data: data,
+                    headers: { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
+                    success: function (response) {
                         if (response.success) {
                             showMessage(response.message, 'success');
-                            setTimeout(function() {
-                                location.reload();
-                            }, 1000);
+                            setTimeout(function () { location.reload(); }, 1000);
                         } else {
                             showMessage(response.message, 'error');
                         }
                     },
-                    error: function(xhr) {
+                    error: function (xhr) {
                         if (xhr.status === 401) {
                             showMessage('Session expired. Redirecting to login...', 'error');
-                            setTimeout(function() {
-                                window.location.href = '/Account/Login';
-                            }, 2000);
+                            setTimeout(function () { window.location.href = '/Account/Login'; }, 2000);
                         } else {
                             showMessage('An error occurred. Please try again.', 'error');
                         }
@@ -253,75 +248,63 @@
                 });
             }
 
-            $('#blockBtn').click(function() {
-                var selectedIds = $('.user-checkbox:checked').map(function() {
-                    return $(this).val();
-                }).get();
-
+            $('#blockBtn').click(function () {
+                var selectedIds = $('.user-checkbox:checked').map(function () { return $(this).val(); }).get();
                 if (selectedIds.length > 0) {
-                    if (confirm('Are you sure you want to block the selected user(s)?')) {
-                        performAction('BlockUsers', selectedIds, 'Users blocked successfully');
-                    }
+                    showConfirm('Are you sure you want to block the selected user(s)?', 'BlockUsers', selectedIds);
                 }
             });
 
-            $('#unblockBtn').click(function() {
-                var selectedIds = $('.user-checkbox:checked').map(function() {
-                    return $(this).val();
-                }).get();
-
+            $('#unblockBtn').click(function () {
+                var selectedIds = $('.user-checkbox:checked').map(function () { return $(this).val(); }).get();
                 if (selectedIds.length > 0) {
-                    if (confirm('Are you sure you want to unblock the selected user(s)?')) {
-                        performAction('UnblockUsers', selectedIds, 'Users unblocked successfully');
-                    }
+                    showConfirm('Are you sure you want to unblock the selected user(s)?', 'UnblockUsers', selectedIds);
                 }
             });
 
-            $('#deleteBtn').click(function() {
-                var selectedIds = $('.user-checkbox:checked').map(function() {
-                    return $(this).val();
-                }).get();
-
+            $('#deleteBtn').click(function () {
+                var selectedIds = $('.user-checkbox:checked').map(function () { return $(this).val(); }).get();
                 if (selectedIds.length > 0) {
-                    if (confirm('Are you sure you want to delete the selected user(s)? This action cannot be undone.')) {
-                        performAction('DeleteUsers', selectedIds, 'Users deleted successfully');
-                    }
+                    showConfirm('Are you sure you want to delete the selected user(s)? This action cannot be undone.', 'DeleteUsers', selectedIds);
                 }
             });
 
-            $('#deleteUnverifiedBtn').click(function() {
-                if (confirm('Are you sure you want to delete all unverified users? This action cannot be undone.')) {
-                    $.ajax({
-                        url: '/User/DeleteUnverifiedUsers',
-                        type: 'POST',
-                        headers: {
-                            'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                showMessage(response.message, 'success');
-                                setTimeout(function() {
-                                    location.reload();
-                                }, 1000);
-                            } else {
-                                showMessage(response.message, 'error');
-                            }
-                        },
-                        error: function(xhr) {
-                            if (xhr.status === 401) {
-                                showMessage('Session expired. Redirecting to login...', 'error');
-                                setTimeout(function() {
-                                    window.location.href = '/Account/Login';
-                                }, 2000);
-                            } else {
-                                showMessage('An error occurred. Please try again.', 'error');
-                            }
-                        }
-                    });
-                }
+            $('#deleteUnverifiedBtn').click(function () {
+                showConfirm('Are you sure you want to delete all unverified users? This action cannot be undone.', 'DeleteUnverifiedUsers', null);
             });
+
+            $('#selectAllCheckbox').change(function () {
+                var isChecked = $(this).prop('checked');
+                $('.user-checkbox').prop('checked', isChecked);
+                updateToolbarButtons();
+            });
+
+            $(document).on('change', '.user-checkbox', function () {
+                updateToolbarButtons();
+                var allChecked = $('.user-checkbox:checked').length === $('.user-checkbox').length;
+                $('#selectAllCheckbox').prop('checked', allChecked);
+            });
+
+            updateToolbarButtons();
         });
     </script>
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm actions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmModalBody">
+                    Are you sure?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmModalOk">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 
