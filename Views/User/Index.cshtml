@@ -181,7 +181,31 @@
                     success: function (response) {
                         if (response.success) {
                             showMessage(response.message, 'success');
-                            setTimeout(function () { location.reload(); }, 1000);
+
+                            if (action === 'BlockUsers') {
+                                userIds.forEach(function (id) {
+                                    var row = $('tr[data-user-id="' + id + '"]');
+                                    var statusCell = row.find('td:nth-child(4)'); 
+                                    statusCell.html('<span class="badge bg-danger">Blocked</span>');
+                                });
+                            } else if (action === 'UnblockUsers') {
+                                userIds.forEach(function (id) {
+                                    var row = $('tr[data-user-id="' + id + '"]');
+                                    var statusCell = row.find('td:nth-child(4)');
+                                    statusCell.html('<span class="badge bg-success">Active</span>');
+                                });
+                            } else if (action === 'DeleteUsers') {
+                                userIds.forEach(function (id) {
+                                    $('tr[data-user-id="' + id + '"]').remove();
+                                });
+                            } else if (action === 'DeleteUnverifiedUsers') {
+                                $('tr').has('.badge.bg-warning').remove();
+                            }
+
+                            $('#selectAllCheckbox').prop('checked', false);
+                            $('.user-checkbox').prop('checked', false);
+                            updateToolbarButtons();
+
                         } else {
                             showMessage(response.message, 'error');
                         }
