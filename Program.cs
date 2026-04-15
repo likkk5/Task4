@@ -11,7 +11,7 @@ builder.Services.AddControllersWithViews();
 
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
                           ?? builder.Configuration.GetConnectionString("DefaultConnection");
-
+Console.WriteLine($"Raw connection string: '{rawConnectionString}'");
 string connectionString;
 if (!string.IsNullOrEmpty(rawConnectionString) && rawConnectionString.StartsWith("postgresql://"))
 {
@@ -67,4 +67,4 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate(); 
 }
-app.Run();
+app.Run(("http://0.0.0.0:8080"));
