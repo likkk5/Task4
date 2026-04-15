@@ -2,18 +2,23 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using UserManagement.Data;
 using UserManagement.Services;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-                       ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+                          ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+var connectionString = new NpgsqlConnectionStringBuilder(rawConnectionString).ConnectionString;
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
+
 Console.WriteLine($"DB ConnectionString: {connectionString}");
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
