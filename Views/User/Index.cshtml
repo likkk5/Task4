@@ -1,0 +1,346 @@
+﻿@model List<UserManagement.Models.User>
+@{
+    ViewData["Title"] = "User Management";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        .table th, .table td {
+            vertical-align: middle;
+        }
+        .toolbar {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-blocked { background: #f8d7da; color: #721c24; }
+        .status-unverified { background: #fff3cd; color: #856404; }
+        .btn-icon {
+            padding: 8px 16px;
+            margin-right: 8px;
+        }
+        .btn-icon i {
+            margin-right: 6px;
+        }
+        .table-checkbox {
+            width: 40px;
+            text-align: center;
+        }
+        .table-checkbox input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        [data-bs-toggle="tooltip"] {
+            cursor: help;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand">
+                <i class="fas fa-users me-2"></i>User Management System
+            </span>
+            <div class="d-flex">
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user me-1"></i>Welcome, @User.Identity.Name
+                </span>
+                <form asp-action="Logout" asp-controller="Account" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div id="statusMessage"></div>
+
+                <div class="toolbar">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button type="button" class="btn btn-warning btn-icon" id="blockBtn" disabled data-bs-toggle="tooltip" title="Block selected users">
+                            <i class="fas fa-ban"></i>Block
+                        </button>
+                        <button type="button" class="btn btn-success btn-icon" id="unblockBtn" disabled data-bs-toggle="tooltip" title="Unblock selected users">
+                            <i class="fas fa-check-circle"></i>Unblock
+                        </button>
+                        <button type="button" class="btn btn-danger btn-icon" id="deleteBtn" disabled data-bs-toggle="tooltip" title="Delete selected users">
+                            <i class="fas fa-trash-alt"></i>Delete
+                        </button>
+                        <button type="button" class="btn btn-info btn-icon" id="deleteUnverifiedBtn" data-bs-toggle="tooltip" title="Delete all unverified users">
+                            <i class="fas fa-user-slash"></i>Delete unverified
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="table-checkbox">
+                                    <input type="checkbox" id="selectAllCheckbox" data-bs-toggle="tooltip" title="Select/Deselect all users" />
+                                </th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Last Login Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Model)
+                            {
+                                <tr data-user-id="@user.Id">
+                                    <td class="table-checkbox">
+                                        <input type="checkbox" class="user-checkbox" value="@user.Id" />
+                                    </td>
+                                    <td>@user.Name</td>
+                                    <td>@user.Email</td>
+                                    <td>
+                                        <span class="status-badge status-@user.Status">
+                                            @(user.Status == "active" ? "Active" : (user.Status == "blocked" ? "Blocked" : "Unverified"))
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (user.LastLoginTime.HasValue)
+                                        {
+                                            var timeAgo = GetTimeAgo(user.LastLoginTime.Value);
+                                            <span title="@user.LastLoginTime.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                @timeAgo
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Never</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <script>
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+
+            let interval = seconds / 31536000;
+            if (interval > 1) return Math.floor(interval) + " years ago";
+
+            interval = seconds / 2592000;
+            if (interval > 1) return Math.floor(interval) + " months ago";
+
+            interval = seconds / 86400;
+            if (interval > 1) return Math.floor(interval) + " days ago";
+
+            interval = seconds / 3600;
+            if (interval > 1) return Math.floor(interval) + " hours ago";
+
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + " minutes ago";
+
+            return Math.floor(seconds) + " seconds ago";
+        }
+
+        setInterval(function() {
+            $('td span[title]').each(function() {
+                var dateStr = $(this).attr('title');
+                if (dateStr) {
+                    var date = new Date(dateStr);
+                    $(this).text(getTimeAgo(date));
+                }
+            });
+        }, 60000);
+
+        $(document).ready(function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            $('#selectAllCheckbox').change(function() {
+                var isChecked = $(this).prop('checked');
+                $('.user-checkbox').prop('checked', isChecked);
+                updateToolbarButtons();
+            });
+
+            $(document).on('change', '.user-checkbox', function() {
+                updateToolbarButtons();
+                var allChecked = $('.user-checkbox:checked').length === $('.user-checkbox').length;
+                $('#selectAllCheckbox').prop('checked', allChecked);
+            });
+
+            function updateToolbarButtons() {
+                var checkedCount = $('.user-checkbox:checked').length;
+                var buttonsEnabled = checkedCount > 0;
+                $('#blockBtn, #unblockBtn, #deleteBtn').prop('disabled', !buttonsEnabled);
+            }
+
+            function showMessage(message, type) {
+                var alertClass = type === 'success' ? 'alert-success' : (type === 'error' ? 'alert-danger' : 'alert-info');
+                var icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+
+                var messageHtml = `
+                    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                        <i class="fas ${icon} me-2"></i>${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                $('#statusMessage').html(messageHtml);
+
+                setTimeout(function() {
+                    $('.alert').fadeOut('slow', function() {
+                        $(this).remove();
+                    });
+                }, 3000);
+            }
+
+            function performAction(action, userIds, successMessage) {
+                $.ajax({
+                    url: '/User/' + action,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(userIds),
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showMessage(response.message, 'success');
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            showMessage(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        if (xhr.status === 401) {
+                            showMessage('Session expired. Redirecting to login...', 'error');
+                            setTimeout(function() {
+                                window.location.href = '/Account/Login';
+                            }, 2000);
+                        } else {
+                            showMessage('An error occurred. Please try again.', 'error');
+                        }
+                    }
+                });
+            }
+
+            $('#blockBtn').click(function() {
+                var selectedIds = $('.user-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+
+                if (selectedIds.length > 0) {
+                    if (confirm('Are you sure you want to block the selected user(s)?')) {
+                        performAction('BlockUsers', selectedIds, 'Users blocked successfully');
+                    }
+                }
+            });
+
+            $('#unblockBtn').click(function() {
+                var selectedIds = $('.user-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+
+                if (selectedIds.length > 0) {
+                    if (confirm('Are you sure you want to unblock the selected user(s)?')) {
+                        performAction('UnblockUsers', selectedIds, 'Users unblocked successfully');
+                    }
+                }
+            });
+
+            $('#deleteBtn').click(function() {
+                var selectedIds = $('.user-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+
+                if (selectedIds.length > 0) {
+                    if (confirm('Are you sure you want to delete the selected user(s)? This action cannot be undone.')) {
+                        performAction('DeleteUsers', selectedIds, 'Users deleted successfully');
+                    }
+                }
+            });
+
+            $('#deleteUnverifiedBtn').click(function() {
+                if (confirm('Are you sure you want to delete all unverified users? This action cannot be undone.')) {
+                    $.ajax({
+                        url: '/User/DeleteUnverifiedUsers',
+                        type: 'POST',
+                        headers: {
+                            'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                showMessage(response.message, 'success');
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 1000);
+                            } else {
+                                showMessage(response.message, 'error');
+                            }
+                        },
+                        error: function(xhr) {
+                            if (xhr.status === 401) {
+                                showMessage('Session expired. Redirecting to login...', 'error');
+                                setTimeout(function() {
+                                    window.location.href = '/Account/Login';
+                                }, 2000);
+                            } else {
+                                showMessage('An error occurred. Please try again.', 'error');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
+@functions {
+    public string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalSeconds < 60)
+            return "less than a minute ago";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes} minute{(timeSpan.TotalMinutes >= 2 ? "s" : "")} ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours} hour{(timeSpan.TotalHours >= 2 ? "s" : "")} ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays} day{(timeSpan.TotalDays >= 2 ? "s" : "")} ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)} week{(timeSpan.TotalDays / 7 >= 2 ? "s" : "")} ago";
+
+        return dateTime.ToString("yyyy-MM-dd");
+    }
+}
