@@ -1,151 +1,101 @@
 ﻿@model List<UserManagement.Models.User>
 @{
     ViewData["Title"] = "User Management";
-    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Admin Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <style>
-        .table th, .table td {
-            vertical-align: middle;
-        }
-        .toolbar {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 20px;
-        }
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .status-active { background: #d4edda; color: #155724; }
-        .status-blocked { background: #f8d7da; color: #721c24; }
-        .status-unverified { background: #fff3cd; color: #856404; }
-        .btn-icon {
-            padding: 8px 16px;
-            margin-right: 8px;
-        }
-        .btn-icon i {
-            margin-right: 6px;
-        }
-        .table-checkbox {
-            width: 40px;
-            text-align: center;
-        }
-        .table-checkbox input[type="checkbox"] {
-            cursor: pointer;
-            width: 18px;
-            height: 18px;
-        }
-        [data-bs-toggle="tooltip"] {
-            cursor: help;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-dark bg-dark mb-4">
-        <div class="container-fluid">
-            <span class="navbar-brand">
-                <i class="fas fa-users me-2"></i>User Management System
-            </span>
-            <div class="d-flex">
-                <span class="navbar-text me-3">
-                    <i class="fas fa-user me-1"></i>Welcome, @User.Identity.Name
-                </span>
-                <form asp-action="Logout" asp-controller="Account" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-light btn-sm">
-                        <i class="fas fa-sign-out-alt me-1"></i>Logout
-                    </button>
-                </form>
+<div id="statusMessage"></div>
+
+<div class="bg-light p-3 rounded mb-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-warning" id="blockBtn" disabled data-bs-toggle="tooltip" title="Block selected users">
+            <i class="fas fa-ban"></i> Block
+        </button>
+        <button type="button" class="btn btn-success" id="unblockBtn" disabled data-bs-toggle="tooltip" title="Unblock selected users">
+            <i class="fas fa-check-circle"></i> Unblock
+        </button>
+        <button type="button" class="btn btn-danger" id="deleteBtn" disabled data-bs-toggle="tooltip" title="Delete selected users">
+            <i class="fas fa-trash-alt"></i> Delete
+        </button>
+        <button type="button" class="btn btn-info" id="deleteUnverifiedBtn" data-bs-toggle="tooltip" title="Delete all unverified users">
+            <i class="fas fa-user-slash"></i> Delete unverified
+        </button>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th class="text-center" style="width: 40px">
+                    <input type="checkbox" id="selectAllCheckbox" data-bs-toggle="tooltip" title="Select/Deselect all users" />
+                </th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Last Login Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model)
+            {
+                <tr data-user-id="@user.Id">
+                    <td class="text-center">
+                        <input type="checkbox" class="user-checkbox" value="@user.Id" />
+                    </td>
+                    <td>@user.Name</td>
+                    <td>@user.Email</td>
+                    <td>
+                        @if (user.Status == "active")
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else if (user.Status == "blocked")
+                        {
+                            <span class="badge bg-danger">Blocked</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Unverified</span>
+                        }
+                    </td>
+                    <td>
+                        @if (user.LastLoginTime.HasValue)
+                        {
+                            var timeAgo = GetTimeAgo(user.LastLoginTime.Value);
+                            <span title="@user.LastLoginTime.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                @timeAgo
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Never</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-        </div>
-    </nav>
-
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-12">
-                <div id="statusMessage"></div>
-
-                <div class="toolbar">
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <button type="button" class="btn btn-warning btn-icon" id="blockBtn" disabled data-bs-toggle="tooltip" title="Block selected users">
-                            <i class="fas fa-ban"></i>Block
-                        </button>
-                        <button type="button" class="btn btn-success btn-icon" id="unblockBtn" disabled data-bs-toggle="tooltip" title="Unblock selected users">
-                            <i class="fas fa-check-circle"></i>Unblock
-                        </button>
-                        <button type="button" class="btn btn-danger btn-icon" id="deleteBtn" disabled data-bs-toggle="tooltip" title="Delete selected users">
-                            <i class="fas fa-trash-alt"></i>Delete
-                        </button>
-                        <button type="button" class="btn btn-info btn-icon" id="deleteUnverifiedBtn" data-bs-toggle="tooltip" title="Delete all unverified users">
-                            <i class="fas fa-user-slash"></i>Delete unverified
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="table-checkbox">
-                                    <input type="checkbox" id="selectAllCheckbox" data-bs-toggle="tooltip" title="Select/Deselect all users" />
-                                </th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th>Last Login Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var user in Model)
-                            {
-                                <tr data-user-id="@user.Id">
-                                    <td class="table-checkbox">
-                                        <input type="checkbox" class="user-checkbox" value="@user.Id" />
-                                    </td>
-                                    <td>@user.Name</td>
-                                    <td>@user.Email</td>
-                                    <td>
-                                        <span class="status-badge status-@user.Status">
-                                            @(user.Status == "active" ? "Active" : (user.Status == "blocked" ? "Blocked" : "Unverified"))
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if (user.LastLoginTime.HasValue)
-                                        {
-                                            var timeAgo = GetTimeAgo(user.LastLoginTime.Value);
-                                            <span title="@user.LastLoginTime.Value.ToString("yyyy-MM-dd HH:mm:ss")">
-                                                @timeAgo
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">Never</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+            <div class="modal-body" id="confirmModalBody">
+                Are you sure?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmModalOk">OK</button>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-
+@section Scripts {
     <script>
         function getTimeAgo(date) {
             const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -190,7 +140,7 @@
 
             $('#confirmModalOk').click(function () {
                 if (pendingAction) {
-                    performAction(pendingAction, pendingIds, '');
+                    performAction(pendingAction, pendingIds);
                     pendingAction = null;
                     pendingIds = null;
                     $('#confirmModal').modal('hide');
@@ -199,26 +149,25 @@
 
             function updateToolbarButtons() {
                 var checkedCount = $('.user-checkbox:checked').length;
-                var buttonsEnabled = checkedCount > 0;
-                $('#blockBtn, #unblockBtn, #deleteBtn').prop('disabled', !buttonsEnabled);
+                $('#blockBtn, #unblockBtn, #deleteBtn').prop('disabled', checkedCount === 0);
             }
 
             function showMessage(message, type) {
                 var alertClass = type === 'success' ? 'alert-success' : (type === 'error' ? 'alert-danger' : 'alert-info');
                 var icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
                 var messageHtml = `
-                        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-                            <i class="fas ${icon} me-2"></i>${message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    `;
+                            <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                                <i class="fas ${icon} me-2"></i>${message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `;
                 $('#statusMessage').html(messageHtml);
                 setTimeout(function () {
                     $('.alert').fadeOut('slow', function () { $(this).remove(); });
                 }, 3000);
             }
 
-            function performAction(action, userIds, successMessage) {
+            function performAction(action, userIds) {
                 let data = null;
                 if (action !== 'DeleteUnverifiedUsers') {
                     data = JSON.stringify(userIds);
@@ -250,23 +199,17 @@
 
             $('#blockBtn').click(function () {
                 var selectedIds = $('.user-checkbox:checked').map(function () { return $(this).val(); }).get();
-                if (selectedIds.length > 0) {
-                    showConfirm('Are you sure you want to block the selected user(s)?', 'BlockUsers', selectedIds);
-                }
+                if (selectedIds.length) showConfirm('Are you sure you want to block the selected user(s)?', 'BlockUsers', selectedIds);
             });
 
             $('#unblockBtn').click(function () {
                 var selectedIds = $('.user-checkbox:checked').map(function () { return $(this).val(); }).get();
-                if (selectedIds.length > 0) {
-                    showConfirm('Are you sure you want to unblock the selected user(s)?', 'UnblockUsers', selectedIds);
-                }
+                if (selectedIds.length) showConfirm('Are you sure you want to unblock the selected user(s)?', 'UnblockUsers', selectedIds);
             });
 
             $('#deleteBtn').click(function () {
                 var selectedIds = $('.user-checkbox:checked').map(function () { return $(this).val(); }).get();
-                if (selectedIds.length > 0) {
-                    showConfirm('Are you sure you want to delete the selected user(s)? This action cannot be undone.', 'DeleteUsers', selectedIds);
-                }
+                if (selectedIds.length) showConfirm('Are you sure you want to delete the selected user(s)? This action cannot be undone.', 'DeleteUsers', selectedIds);
             });
 
             $('#deleteUnverifiedBtn').click(function () {
@@ -288,42 +231,17 @@
             updateToolbarButtons();
         });
     </script>
-    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm actions</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="confirmModalBody">
-                    Are you sure?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="confirmModalOk">OK</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+}
 
 @functions {
     public string GetTimeAgo(DateTime dateTime)
     {
         var timeSpan = DateTime.UtcNow - dateTime;
-
-        if (timeSpan.TotalSeconds < 60)
-            return "less than a minute ago";
-        if (timeSpan.TotalMinutes < 60)
-            return $"{(int)timeSpan.TotalMinutes} minute{(timeSpan.TotalMinutes >= 2 ? "s" : "")} ago";
-        if (timeSpan.TotalHours < 24)
-            return $"{(int)timeSpan.TotalHours} hour{(timeSpan.TotalHours >= 2 ? "s" : "")} ago";
-        if (timeSpan.TotalDays < 7)
-            return $"{(int)timeSpan.TotalDays} day{(timeSpan.TotalDays >= 2 ? "s" : "")} ago";
-        if (timeSpan.TotalDays < 30)
-            return $"{(int)(timeSpan.TotalDays / 7)} week{(timeSpan.TotalDays / 7 >= 2 ? "s" : "")} ago";
-
+        if (timeSpan.TotalSeconds < 60) return "less than a minute ago";
+        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes} minute{(timeSpan.TotalMinutes >= 2 ? "s" : "")} ago";
+        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours} hour{(timeSpan.TotalHours >= 2 ? "s" : "")} ago";
+        if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays} day{(timeSpan.TotalDays >= 2 ? "s" : "")} ago";
+        if (timeSpan.TotalDays < 30) return $"{(int)(timeSpan.TotalDays / 7)} week{(timeSpan.TotalDays / 7 >= 2 ? "s" : "")} ago";
         return dateTime.ToString("yyyy-MM-dd");
     }
 }
