@@ -119,7 +119,7 @@ namespace UserManagement.Controllers
             await _context.SaveChangesAsync();
             _logger.LogInformation($"Unblocked users: {string.Join(", ", userIds)}");
 
-            return Ok(new { success = true, message = $"{users.Count} user(s) unblocked successfully." });
+            return Ok(new { success = true, message = $"{users.Count} user(s) unblocked successfully.", updatedUsers = updatedUsers });
         }
 
         [HttpPost]
