@@ -106,12 +106,13 @@ namespace UserManagement.Controllers
             }
 
             var users = await _context.Users.Where(u => userIds.Contains(u.Id)).ToListAsync();
-
+            var updatedUsers = new List<object>();
             foreach (var user in users)
             {
                 if (user.Status == "blocked")
                 {
                     user.Status = string.IsNullOrEmpty(user.EmailVerificationToken) ? "active" : "unverified";
+                    updatedUsers.Add(new { id = user.Id, status = user.Status });
                 }
             }
 

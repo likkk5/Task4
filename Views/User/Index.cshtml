@@ -189,11 +189,19 @@
                                     statusCell.html('<span class="badge bg-danger">Blocked</span>');
                                 });
                             } else if (action === 'UnblockUsers') {
-                                userIds.forEach(function (id) {
-                                    var row = $('tr[data-user-id="' + id + '"]');
-                                    var statusCell = row.find('td:nth-child(4)');
-                                    statusCell.html('<span class="badge bg-success">Active</span>');
-                                });
+                                if (response.updatedUsers && response.updatedUsers.length) {
+                                    response.updatedUsers.forEach(function (u) {
+                                        var row = $('tr[data-user-id="' + u.id + '"]');
+                                        var statusCell = row.find('td:nth-child(4)');
+                                        if (u.status === 'active') {
+                                            statusCell.html('<span class="badge bg-success">Active</span>');
+                                        } else if (u.status === 'unverified') {
+                                            statusCell.html('<span class="badge bg-warning text-dark">Unverified</span>');
+                                        } else {
+                                            statusCell.html('<span class="badge bg-secondary">' + u.status + '</span>');
+                                        }
+                                    });
+                                }
                             } else if (action === 'DeleteUsers') {
                                 userIds.forEach(function (id) {
                                     $('tr[data-user-id="' + id + '"]').remove();
