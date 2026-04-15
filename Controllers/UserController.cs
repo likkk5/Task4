@@ -46,7 +46,7 @@ namespace UserManagement.Controllers
             }
 
             var users = await _context.Users
-                .OrderByDescending(u => u.LastLoginTime) // Sort by last login time
+                .OrderByDescending(u => u.LastLoginTime) 
                 .Select(u => new User
                 {
                     Id = u.Id,
@@ -111,7 +111,7 @@ namespace UserManagement.Controllers
             {
                 if (user.Status == "blocked")
                 {
-                    user.Status = "active";
+                    user.Status = string.IsNullOrEmpty(user.EmailVerificationToken) ? "active" : "unverified";
                 }
             }
 
