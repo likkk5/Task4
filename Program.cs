@@ -6,7 +6,6 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
 
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
@@ -45,7 +44,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");

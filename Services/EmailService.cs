@@ -46,8 +46,7 @@ namespace UserManagement.Services
                 var htmlContent = $@"
                 <h2>Welcome to User Management System!</h2>
                 <p>Please verify your email address by clicking the link below:</p>
-                <p><a href='{verificationLink}'>Verify Email Address</a></p>
-                <p>If you did not create an account, please ignore this email.</p>";
+                <p><a href='{verificationLink}'>Verify Email Address</a></p>";
 
                 var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
                 var response = await client.SendEmailAsync(msg);
