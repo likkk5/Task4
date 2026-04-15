@@ -12,13 +12,26 @@ builder.Services.AddControllersWithViews();
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
                           ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-var connectionString = new NpgsqlConnectionStringBuilder(rawConnectionString).ConnectionString;
+string connectionString;
+if (!string.IsNullOrEmpty(rawConnectionString) && rawConnectionString.StartsWith("postgresql://"))
+{
+    var uri = new Uri(rawConnectionString);
+    var userInfo = uri.UserInfo.Split(':');
+    var username = userInfo[0];
+    var password = userInfo.Length > 1 ? userInfo[1] : "";
+    var database = uri.AbsolutePath.TrimStart('/');
+    var host = uri.Host;
+    var port = uri.Port;
+    connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};";
+}
+else
+{
+    connectionString = rawConnectionString;
+}
 
+Console.WriteLine($"Connection string: {connectionString}");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
-
-Console.WriteLine($"DB ConnectionString: {connectionString}");
-
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
